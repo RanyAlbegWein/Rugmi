@@ -53,11 +53,10 @@ setup() {
 # Args: Images to upload.
 upload() {
 	local access_token="${codes_map[access_token]}"
-    local links=()
 
 	for f; do
 		if res=$(curl --silent -X POST -H "Authorization: Bearer $access_token" -F "image=@$f" https://api.imgur.com/3/upload | grep -o 'http:[^"]*'); then
-			links+=("${res//\\/}")
+			printf '%s\n' "${res//\\/}"
         else
             return 1
         fi
