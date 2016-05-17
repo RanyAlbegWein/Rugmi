@@ -1,0 +1,128 @@
+#!/bin/bash
+# Copyright (C) 2016 Rany Albeg Wein - rany.albeg@gmail.com
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#
+
+# Contains access_token, refresh_token, client_id and client_secret.
+codes_file="$HOME/.imgur_codes"
+# Codes map, read from codes_file
+declare -A codes_map
+
+# Die.
+# Args: Exit status (optional), failure message.
+die() {
+    local r=$?
+    if [[ $1 != *[!0-9]* ]]; then
+        r=$1
+        shift
+    fi
+    printf '%s\n' "$@" >&2
+    exit $r
+}
+
+# Initial setup to read and write access_token, refresh_token, client_id and client_secret.
+setup() {
+    printf '%s\n' "Please provide the following details:"
+    read -rp "Access token: " access_token
+    read -rp "Refresh token: " refresh_token
+    read -rp "Client id: " client_id
+    read -rp "Client secret: " client_secret
+
+    codes_map[access_token]="$access_token"
+    codes_map[refresh_token]="$refresh_token"
+    codes_map[client_id]="$client_id"
+    codes_map[client_secret]="$client_secret"
+
+    write_codes_file
+}
+
+# Upload images to imgur and print their links.
+# Args: Images to upload.
+upload() {
+	local access_token="${codes_map[access_token]}"
+    local links=()
+
+	for f; do
+		if res=$(curl --silent -X POST -H "Authorization: Bearer $access_token" -F "image=@$f" https://api.imgur.com/3/upload | grep -o 'http:[^"]*'); then
+			links+=("${res//\\/}")
+        else
+            return 1
+        fi
+	done
+
+    printf '%s\n' "${links[@]}"
+}
+
+# Request and read new tokens from imgur.com.
+request_and_read_new_tokens() {
+
+    if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" \
+            -F "refresh_token=${codes_map[refresh_token]}" \
+            -F "client_id=${codes_map[client_id]}" \
+            -F "client_secret=${codes_map[client_secret]}" \
+            -F "grant_type=refresh_token" https://api.imgur.com/oauth2/token); then 
+
+        while IFS=\" read -rd \, _ k _ v; do
+            if [[ "$k" = access_token || "$k" = refresh_token ]]; then
+                codes_map["$k"]="$v"
+            fi
+        done <<< "$res"
+
+        return 0
+    fi
+
+    return 1
+}
+
+# Read codes file to codes_map.
+read_codes_file() {
+    while IFS=: read -r k v; do
+        codes_map["$k"]="$v"
+    done < "$codes_file"
+}
+
+# Write codes_map to codes_file
+write_codes_file() {
+
+    umask 077
+    printf '%s:%s\n' access_token "${codes_map[access_token]}" \
+                     refresh_token "${codes_map[refresh_token]}" \
+                     client_id "${codes_map[client_id]}" \
+                     client_secret "${codes_map[client_secret]}" > "$codes_file"
+
+} 
+
+
+## PROGRAM STARTS HERE ##
+
+
+# Codes file existance validation.
+[[ -f "$codes_file" ]] || setup
+
+read_codes_file
+
+# Upload img_file to imgur.com
+if ! upload "$@"; then
+
+    request_and_read_new_tokens || die "Request for new tokens failed."
+
+    # Try again.
+    upload "$@"
+    # Store new tokens for later usage.
+    write_codes_file
+fi
+
+
