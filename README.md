@@ -5,10 +5,10 @@ On first execution, `imgur` will ask you to provde the following:
 
 - Access token
 - Refresh token
-- client id
-- client secret
+- Client id
+- Client secret
 
-It will then store this info in `~/.imgur_codes` with a **077** `umask`. Once setup is complete, `imgur` will automatically use your refresh token to ask [imgur.com](http://imgur.com/) for a new access token once it expires.
+It will then store this info in `~/.imgur_codes` with a **077** `umask`. After setup is complete, `imgur` will automatically use your refresh token to ask [imgur.com](http://imgur.com/) for a new access token once it expires.
 
 ### Author
 Rany Albeg Wein - rany.albeg@gmail.com
