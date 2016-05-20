@@ -1,6 +1,8 @@
 ### Usage
 `imgur file1 file2 ... fileN`
 
+`find /home/rany/Pictures -type f -name '*.jpg' -print0 | imgur -0`
+
 On first execution, `imgur` will ask you to provde the following:
 
 - Access token
