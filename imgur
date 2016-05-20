@@ -20,6 +20,12 @@
 codes_file="$HOME/.imgur_codes"
 # Codes map, read from codes_file
 declare -A codes_map
+# Files to upload.
+files=()
+# Number of images already uploaded.
+uploaded=0
+# Read files from stdin or not.
+read_stdin=0
 
 # Die.
 # Args: Exit status (optional), failure message.
@@ -56,6 +62,7 @@ upload() {
 	for f; do
 		if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" -F "image=@$f" https://api.imgur.com/3/upload | grep -o 'http:[^"]*'); then
 			printf '%s\n' "${res//\\/}"
+            ((++uploaded))
         else
             return 1
         fi
@@ -104,6 +111,14 @@ write_codes_file() {
 
 ## PROGRAM STARTS HERE ##
 
+if [[ $1 = -0 ]]; then
+    # Read null delimited images paths.
+    while read -rd '' f; do
+        files+=("$f")
+    done
+else
+    files=("$@")
+fi
 
 # Codes file existance validation.
 [[ -f "$codes_file" ]] || setup
@@ -111,12 +126,12 @@ write_codes_file() {
 read_codes_file
 
 # Upload img_file to imgur.com
-if ! upload "$@"; then
+if ! upload "${files[@]}"; then
 
     request_and_read_new_tokens || die "Request for new tokens failed."
 
-    # Try again.
-    upload "$@"
+    # Try again with remaining files.
+    upload "${files[@]:uploaded}"
     # Store new tokens for later usage.
     write_codes_file
 fi
