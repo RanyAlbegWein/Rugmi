@@ -18,7 +18,7 @@
 
 # Contains access_token, refresh_token, client_id and client_secret.
 codes_file="$HOME/.imgur_codes"
-# Codes map, read from codes_file
+# Codes map, read from codes_file.
 declare -A codes_map
 # Files to upload.
 files=()
@@ -112,7 +112,7 @@ write_codes_file() {
 ## PROGRAM STARTS HERE ##
 
 if [[ $1 = -0 ]]; then
-    # Read null delimited images paths.
+    # Read null terminated file names from stdin.
     while read -rd '' f; do
         files+=("$f")
     done
@@ -125,7 +125,7 @@ fi
 
 read_codes_file
 
-# Upload img_file to imgur.com
+# Upload files to imgur.com
 if ! upload "${files[@]}"; then
 
     request_and_read_new_tokens || die "Request for new tokens failed."
