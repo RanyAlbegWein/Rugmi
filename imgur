@@ -71,7 +71,7 @@ ${bold}DESCRIPTION${reset}
 
 ${bold}OPTIONS${reset}
         -f,--file FILE              Select a FILE to upload.
-        -0,--null					Read null terminated file names from stdin.
+        -0,--null                   Read null terminated file names from stdin.
         -t,--link-type TYPE         Choose what type of link to print after upload.
         -s,--display-size SIZE      Select the display size of the uploaded image.
 
@@ -184,13 +184,13 @@ is_valid_display_size() {
 upload() {
 
 	for f; do
-		if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" -F "image=@$f" https://api.imgur.com/3/upload | grep -o 'http:[^"]*'); then
-			print_link "${res//\\/}"
+        if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" -F "image=@$f" https://api.imgur.com/3/upload | grep -o 'http:[^"]*'); then
+            print_link "${res//\\/}"
             ((++uploaded))
         else
             return 1
         fi
-	done
+    done
 }
 
 # Request and read new tokens from imgur.com.

@@ -24,7 +24,7 @@
 **OPTIONS**
 
         -f,--file FILE              Select a FILE to upload.
-        -0,--null                                       Read null terminated file names from stdin.
+        -0,--null                   Read null terminated file names from stdin.
         -t,--link-type TYPE         Choose what type of link to print after upload.
         -s,--display-size SIZE      Select the display size of the uploaded image.
 
@@ -62,7 +62,7 @@
         $ find dir/ -type f -name '*.jpg' -print0 | imgur -0
 
         Upload foo.png and print an HTML type of link to be displayed as a medium thumbnail.
-        imgur -f foo.png -t HTML -s MT
+        $ imgur -f foo.png -t HTML -s MT
 
 ### Author
 Rany Albeg Wein - rany.albeg@gmail.com
