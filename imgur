@@ -16,6 +16,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
+shopt -s extglob
 # Contains access_token, refresh_token, client_id and client_secret.
 codes_file="$HOME/.imgur_codes"
 # Codes map, read from codes_file.
@@ -26,6 +27,94 @@ files=()
 uploaded=0
 # Read files from stdin or not.
 read_stdin=0
+# Options string.
+optstring=ht:s:f:0
+# Options array.
+options=()
+# Link type enabled.
+link_type_enabled=0
+# Link type, should be one of:
+# Image, Direct ( Default ), Markdown, HTML, BBCode, LBBCode (Linked BBCode).
+link_type=Direct
+# Display size enabled.
+display_size_enabled=0
+# Display size, should one of:
+# O (Original), SS (Small square), BS (Big square)
+# ST (Small thumbnail), MT (Medium thumbnail)
+# LT (Large thumbnail), HT (Huge thumbnail)
+display_size=O
+# Display size codes.
+declare -A display_codes=( ["O"]= ["SS"]=s ["BS"]=b ["ST"]=t ["MT"]=m ["LT"]=l ["HT"]=h )
+
+usage() {
+    local bold=$(tput bold)
+    local reset=$(tput sgr0)
+cat<<-EOF
+${bold}NAME${reset}
+        imgur - Upload images to imgur.com and print their links.
+
+${bold}SYNOPSIS${reset}
+        imgur [-ts0h] -f FILE
+
+${bold}DESCRIPTION${reset}
+        Upload images to imgur.com and print their links.
+		
+        On first execution, imgur will ask you to provide the following:
+
+        - Access token
+        - Refresh token
+        - Client id
+        - Client secret
+
+        It will then store this info in ~/.imgur_codes with a 077 umask.
+        After setup is complete, imgur will automatically use your refresh token to ask imgur.com for a new access token once it expires.
+
+${bold}OPTIONS${reset}
+        -f,--file FILE              Select a FILE to upload.
+        -0,--null					Read null terminated file names from stdin.
+        -t,--link-type TYPE         Choose what type of link to print after upload.
+        -s,--display-size SIZE      Select the display size of the uploaded image.
+
+        -- FILES                    Ignore any options to come.
+                                    Everything after this option is considered a file.
+        -h,--help                   Show this message and exit successfully.
+
+         Link types:
+            ${bold}*${reset} Image    (email & IM)
+                The uploaded image as it is hosted in imgur.com, with all the fun stuff around.
+                This type of link will ignore any display size ( if provided via -s,--display-size )
+            ${bold}*${reset} Direct   (email & IM)
+            ${bold}*${reset} Markdown (reddit comments)
+            ${bold}*${reset} HTML     (website/blogs)
+            ${bold}*${reset} BBCode   (message boards & forums)
+            ${bold}*${reset} LBBCode  (Linked BBCode suitable for message boards)
+
+         Display size options:
+            ${bold}*${reset} O  (Original)
+            ${bold}*${reset} SS (Small square)
+            ${bold}*${reset} BS (Big square)
+            ${bold}*${reset} ST (Small thumbnail)
+            ${bold}*${reset} MT (Medium thumbnail)
+            ${bold}*${reset} LT (Large thumbnail)
+            ${bold}*${reset} HT (Huge thumbnail)
+            
+${bold}EXAMPLES${reset}
+        Upload foo.png, bar.png, baz.png and print the result links to stdout.
+        ${bold}$ imgur -f foo.png -f bar.png -f baz.png${reset}
+            or
+        ${bold}$ imgur -- foo.png bar.png baz.png${reset}
+
+        Upload all JPEG files in a directory and print the result links to stdout.
+        ${bold}$ find dir/ -type f -name '*.jpg' -print0 | imgur -0${reset}
+
+        Upload foo.png and print an HTML type of link to be displayed as a medium thumbnail.
+        ${bold}imgur -f foo.png -t HTML -s MT${reset}
+		
+
+Written by Rany Albeg Wein - rany.albeg@gmail.com
+21/5/2016
+EOF
+}
 
 # Die.
 # Args: Exit status (optional), failure message.
@@ -55,13 +144,48 @@ setup() {
     write_codes_file
 }
 
+print_link() {
+    local link=${1%.*}
+    local ext=${1##*.}
+
+    case $link_type in
+        Image) 
+            printf '%s\n' "$link";;
+        Direct) 
+            printf '%s%s.%s\n' "$link" "${display_codes[$display_size]}" "$ext";;
+        Markdown)
+            printf '[Imgur](%s%s.%s)\n' "$link" "${display_codes[$display_size]}" "$ext";;
+        HTML)
+            printf '<a href="%s"><img src="%s%s.%s" title="source: imgur.com" /></a>\n' "$link" "$link" "${display_codes[$display_size]}" "$ext";;
+        BBCode)
+            printf '[img]%s%s.%s[/img]\n' "$link" "${display_codes[$display_size]}" "$ext";;
+        LBBCode)
+            printf '[url=%s][img]%s%s.%s[/img][/url]\n' "$link" "$link" "${display_codes[$display_size]}" "$ext";;
+    esac
+}
+
+# Ping imgur.
+ping_imgur() {
+    ping -c1 -w2 imgur.com >/dev/null 2>&1
+}
+
+# Check if the requested link type is valid.
+is_valid_link_type() {
+    [[ $1 = @(Image|Direct|Markdown|HTML|BBCode|LBBCode) ]]
+}
+
+# Check if the requested display size is valid.
+is_valid_display_size() {
+    [[ $1 = @(O|SS|BS|ST|MT|LT|HT) ]]
+}
+
 # Upload images to imgur and print their links.
 # Args: Images to upload.
 upload() {
 
 	for f; do
 		if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" -F "image=@$f" https://api.imgur.com/3/upload | grep -o 'http:[^"]*'); then
-			printf '%s\n' "${res//\\/}"
+			print_link "${res//\\/}"
             ((++uploaded))
         else
             return 1
@@ -79,7 +203,7 @@ request_and_read_new_tokens() {
             -F "grant_type=refresh_token" https://api.imgur.com/oauth2/token); then 
 
         while IFS=\" read -rd \, _ k _ v; do
-            if [[ "$k" = access_token || "$k" = refresh_token ]]; then
+            if [[ "$k" = @(access_token|refresh_token) ]]; then
                 codes_map["$k"]="$v"
             fi
         done <<< "$res"
@@ -111,29 +235,117 @@ write_codes_file() {
 
 ## PROGRAM STARTS HERE ##
 
-if [[ $1 = -0 ]]; then
+# Parse cmd line.
+# The following loop was written by e36freak.
+# Check out his great projects at: https://github.com/e36freak
+while (($#)); do
+  case $1 in
+    # if option is of type -ab
+    -[!-]?*)
+      # loop over each character starting with the second
+      for ((i=1; i<${#1}; i++)); do
+        c=${1:i:1}
+        
+        # add current char to options
+        options+=("-$c")
+
+        # if option takes a required argument, and it's not the last char
+        # make the rest of the string its argument
+        if [[ $optstring = *"$c:"* && ${1:i+1} ]]; then
+          options+=("${1:i+1}")
+          break
+        fi
+      done
+      ;;
+    # if option is of type --foo=bar, split on first '='
+    --?*=*) options+=("${1%%=*}" "${1#*=}");;
+    # end of options, stop breaking them up
+    --)
+      options+=(--endopts)
+      shift
+      options+=("$@")
+      break
+      ;;
+    # otherwise, nothing special
+    *) options+=("$1");;
+  esac
+
+  shift
+done
+
+# set new positional parameters to altered options
+set -- "${options[@]}"
+
+# actually parse the options and do stuff
+while [[ $1 = -?* ]]; do
+  case $1 in
+    -h|--help) usage >&2; exit 0;;
+    -0|--null) read_stdin=1;;
+    -t|--link-type) 
+        link_type_enabled=1
+        is_valid_link_type "$2" || die 1 "Invalid link type: $2"
+        link_type="$2"
+        shift
+        ;;
+    -s|--display-size)
+        is_valid_display_size "$2" || die 2 "Inavlid display size: $2"
+        display_size="$2"
+        shift
+        ;;
+    -f)
+        if [[ $2 ]] ; then
+            [[ -f $2 ]] || die "$2 : No such file."
+            files+=("$2")
+            shift
+        else
+            die "$1 missing an argument."
+        fi
+        ;;
+    --endopts) 
+		shift
+		files+=("$@")
+		for f in "${files[@]}"; do
+			[[ -f $f ]] || die "$f : No such file."
+		done
+		break;;
+    *) die "Unknown option $1"
+  esac
+
+  shift
+done
+
+if (( read_stdin )); then
     # Read null terminated file names from stdin.
     while read -rd '' f; do
         files+=("$f")
     done
-else
-    files=("$@")
 fi
 
-# Codes file existance validation.
-[[ -f "$codes_file" ]] || setup
+if (( ${#files[@]} )); then
 
-read_codes_file
+    # Codes file existance validation.
+    [[ -f "$codes_file" ]] || setup
 
-# Upload files to imgur.com
-if ! upload "${files[@]}"; then
+    read_codes_file
 
-    request_and_read_new_tokens || die "Request for new tokens failed."
+    # imgur.com is reachable.
+    if ping_imgur; then
+        # Upload files to imgur.com
+        if ! upload "${files[@]}"; then
 
-    # Try again with remaining files.
-    upload "${files[@]:uploaded}"
-    # Store new tokens for later usage.
-    write_codes_file
+            request_and_read_new_tokens || die 3 "Request for new tokens failed."
+
+            # Store new tokens for later usage.
+            write_codes_file
+
+            # Try again with remaining files.
+            upload "${files[@]:uploaded}" || die 4 "Unable to upload images to imgur.com"
+        fi
+    else
+        die 5 "Unable to reach imgur.com"
+    fi
+else
+    die 6 "Nothing to do."
 fi
 
 
