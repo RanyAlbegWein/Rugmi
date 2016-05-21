@@ -31,13 +31,9 @@ read_stdin=0
 optstring=ht:s:f:0
 # Options array.
 options=()
-# Link type enabled.
-link_type_enabled=0
 # Link type, should be one of:
 # Image, Direct ( Default ), Markdown, HTML, BBCode, LBBCode (Linked BBCode).
 link_type=Direct
-# Display size enabled.
-display_size_enabled=0
 # Display size, should one of:
 # O (Original), SS (Small square), BS (Big square)
 # ST (Small thumbnail), MT (Medium thumbnail)
@@ -282,7 +278,6 @@ while [[ $1 = -?* ]]; do
     -h|--help) usage >&2; exit 0;;
     -0|--null) read_stdin=1;;
     -t|--link-type) 
-        link_type_enabled=1
         is_valid_link_type "$2" || die 1 "Invalid link type: $2"
         link_type="$2"
         shift
