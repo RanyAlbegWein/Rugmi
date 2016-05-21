@@ -33,17 +33,17 @@
         -h,--help                   Show this message and exit successfully.
 
          Link types:
+            * Direct   (email & IM) - Default
             * Image    (email & IM)
                 The uploaded image as it is hosted in imgur.com, with all the fun stuff around.
                 This type of link will ignore any display size ( if provided via -s,--display-size )
-            * Direct   (email & IM)
             * Markdown (reddit comments)
             * HTML     (website/blogs)
             * BBCode   (message boards & forums)
             * LBBCode  (Linked BBCode suitable for message boards)
 
          Display size options:
-            * O  (Original)
+            * O  (Original) - Default
             * SS (Small square)
             * BS (Big square)
             * ST (Small thumbnail)

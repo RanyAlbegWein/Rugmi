@@ -76,17 +76,17 @@ ${bold}OPTIONS${reset}
         -h,--help                   Show this message and exit successfully.
 
          Link types:
+            ${bold}*${reset} Direct   (email & IM) - Default
             ${bold}*${reset} Image    (email & IM)
                 The uploaded image as it is hosted in imgur.com, with all the fun stuff around.
                 This type of link will ignore any display size ( if provided via -s,--display-size )
-            ${bold}*${reset} Direct   (email & IM)
             ${bold}*${reset} Markdown (reddit comments)
             ${bold}*${reset} HTML     (website/blogs)
             ${bold}*${reset} BBCode   (message boards & forums)
             ${bold}*${reset} LBBCode  (Linked BBCode suitable for message boards)
 
          Display size options:
-            ${bold}*${reset} O  (Original)
+            ${bold}*${reset} O  (Original) - Default
             ${bold}*${reset} SS (Small square)
             ${bold}*${reset} BS (Big square)
             ${bold}*${reset} ST (Small thumbnail)
@@ -287,7 +287,7 @@ while [[ $1 = -?* ]]; do
         display_size="$2"
         shift
         ;;
-    -f)
+    -f|--file)
         if [[ $2 ]] ; then
             [[ -f $2 ]] || die "$2 : No such file."
             files+=("$2")
