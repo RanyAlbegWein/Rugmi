@@ -66,6 +66,30 @@
         Upload foo.png and print an HTML type of link to be displayed as a medium thumbnail.
         $ imgur -f foo.png -t HTML -s MT
 
+
+###How To obtain tokens, *Client ID* and *Client Secret*:
+
+* Create an Imgur account.
+* [Register an application](https://api.imgur.com/oauth2/addclient).
+* You should now have *Client ID* and *Client Secret*.
+* Open your browser with the following URL:
+
+    `https://api.imgur.com/oauth2/authorize?client_id=CLIENT_ID&response_type=pin`
+
+     replacing **CLIENT_ID** with yours.
+
+* You should now have another string called *PIN*.
+* Execute the following:
+
+    `curl -X POST -F "client_id=CLIENT_ID" \
+                  -F "client_secret=CLIENT_SECRET" \
+                  -F "pin=PIN" \
+                  -F "grant_type=pin" https://api.imgur.com/oauth2/token`
+
+
+     replacing **CLIENT_ID**, **CLIENT_SECRET** and **PIN** with the relevant strings.
+* You should now have *Access Token* and *Refresh Token*. 
+
 ### Author
 Rany Albeg Wein - rany.albeg@gmail.com
 
@@ -86,3 +110,4 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
