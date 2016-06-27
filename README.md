@@ -81,10 +81,12 @@
 * You should now have another string called *PIN*.
 * Execute the following:
 
-    `curl -X POST -F "client_id=CLIENT_ID" \
+    ```bash
+    curl -X POST -F "client_id=CLIENT_ID" \
                   -F "client_secret=CLIENT_SECRET" \
                   -F "pin=PIN" \
-                  -F "grant_type=pin" https://api.imgur.com/oauth2/token`
+                  -F "grant_type=pin" https://api.imgur.com/oauth2/token
+    ```
 
 
      replacing **CLIENT_ID**, **CLIENT_SECRET** and **PIN** with the relevant strings.
