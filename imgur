@@ -180,7 +180,7 @@ is_valid_display_size() {
 upload() {
 
 	for f; do
-        if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" -F "image=@$f" https://api.imgur.com/3/upload | grep -o 'http:[^"]*'); then
+        if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" -F "image=@$f" https://api.imgur.com/3/upload | grep -Eo 'https?:[^"]+'); then
             print_link "${res//\\/}"
             ((++uploaded))
         else
