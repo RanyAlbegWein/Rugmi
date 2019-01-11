@@ -19,7 +19,7 @@
         If available, xdg-open will be used to open up a browser to log you in imgur.com and get the PIN code.
         Otherwise, you'll be requested to manually copy-paste an authorization link into your browser.
 
-        After providing the PIN code, an access token and refresh token will be requested from rugmi.com
+        After providing the PIN code, an access token and refresh token will be requested from imgur.com
         and stored in ~/.rugmi_tokens with a 077 umask.
 
         *This file should not be edited manually.*
