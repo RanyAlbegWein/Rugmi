@@ -19,8 +19,8 @@
 shopt -s extglob
 # Tokens map, access_token and refresh_token are read from tokens_file.
 declare -A codes_map
-codes_map[client_id]=46f1d4960880706
-codes_map[client_secret]=b22d56a65e46ccb9a554683d6f325514a150ebe7
+codes_map[client_id]=8753f7b4b0826be
+codes_map[client_secret]=3ea399332e4ef4b7d476df49a2a110bb804389a7
 # Base imgur api URL
 base_api_url=https://api.imgur.com
 # Base OAuth2 url.
