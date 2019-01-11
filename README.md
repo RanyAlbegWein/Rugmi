@@ -1,15 +1,18 @@
-**sha1sum**: 01360c200bd62a619bb1fa00cb88a0f37875fe28 
+**sha1sum**: f567eb0af4dbefc70ea94045d342ab0d2750786b
 
 <a href='https://ko-fi.com/E1E0B4X4' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://az743702.vo.msecnd.net/cdn/kofi4.png?v=0' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
 
 **NAME**
+
         rugmi - Upload images to imgur.com and print their links.
 
 **SYNOPSIS**
+
         rugmi [-ts0h] -f FILE
 
 **DESCRIPTION**
+
         Upload images to imgur.com and print their links.
 		
         On first execution, rugmi will ask you to authorize by providing a PIN code.
@@ -21,9 +24,10 @@
 
         *This file should not be edited manually.*
 
-        After setup is complete, rugmi will automatically ask imgur.com for a new access token once it expires.
+        After setup is complete, rugmi will automatically ask imgur.com for a new access token once expired.
 
 **OPTIONS**
+
         -f,--file FILE              Select a FILE to upload.
         -0,--null                   Read null terminated file names from stdin.
         -t,--link-type TYPE         Choose what type of link to print after upload.
@@ -53,6 +57,7 @@
             * HT (Huge thumbnail)
 
 **EXAMPLES**
+
         Upload foo.png, bar.png, baz.png and print the result links to stdout.
         $ rugmi -f foo.png -f bar.png -f baz.png
             or
@@ -65,29 +70,29 @@
         rugmi -f foo.png -t HTML -s MT
 		
 
-Written by Rany Albeg Wein - rany.albeg@gmail.com
-21/5/2016
-
-Edit 11/1/2019 - Auto Oauth2 setup.
+    Written by Rany Albeg Wein - rany.albeg@gmail.com
+    21/5/2016
+    
+    Edit 11/1/2019 - Auto Oauth2 setup.
 ### Author
-Rany Albeg Wein - rany.albeg@gmail.com
-
+    Rany Albeg Wein - rany.albeg@gmail.com
 
 ### License
 
-Copyright (C) 2019 Rany Albeg Wein - rany.albeg@gmail.com
+    Copyright (C) 2019 Rany Albeg Wein - rany.albeg@gmail.com
+    
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 2
+    of the License, or (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version 2
-of the License, or (at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
