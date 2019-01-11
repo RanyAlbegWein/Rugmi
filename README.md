@@ -1,32 +1,29 @@
-**sha1sum**: f567eb0af4dbefc70ea94045d342ab0d2750786b
+**sha1sum**: 01360c200bd62a619bb1fa00cb88a0f37875fe28 
 
 <a href='https://ko-fi.com/E1E0B4X4' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://az743702.vo.msecnd.net/cdn/kofi4.png?v=0' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
-### Usage
-**NAME**
 
-        imgur - Upload images to imgur.com and print their links.
+**NAME**
+        rugmi - Upload images to imgur.com and print their links.
 
 **SYNOPSIS**
-
-        imgur [-ts0h] -f FILE
+        rugmi [-ts0h] -f FILE
 
 **DESCRIPTION**
-
         Upload images to imgur.com and print their links.
+		
+        On first execution, rugmi will ask you to authorize by providing a PIN code.
+        If available, xdg-open will be used to open up a browser to log you in imgur.com and get the PIN code.
+        Otherwise, you'll be requested to manually copy-paste an authorization link into your browser.
 
-        On first execution, imgur will ask you to provide the following:
+        After providing the PIN code, an access token and refresh token will be requested from rugmi.com
+        and stored in ~/.rugmi_tokens with a 077 umask.
 
-        - Access token
-        - Refresh token
-        - Client id
-        - Client secret
+        *This file should not be edited manually.*
 
-        It will then store this info in ~/.imgur_codes with a 077 umask.
-        After setup is complete, imgur will automatically use your refresh token to ask imgur.com for a new access token once it expires.
+        After setup is complete, rugmi will automatically ask imgur.com for a new access token once it expires.
 
 **OPTIONS**
-
         -f,--file FILE              Select a FILE to upload.
         -0,--null                   Read null terminated file names from stdin.
         -t,--link-type TYPE         Choose what type of link to print after upload.
@@ -54,53 +51,31 @@
             * MT (Medium thumbnail)
             * LT (Large thumbnail)
             * HT (Huge thumbnail)
-            
-**EXAMPLES**
 
+**EXAMPLES**
         Upload foo.png, bar.png, baz.png and print the result links to stdout.
-        $ imgur -f foo.png -f bar.png -f baz.png
+        $ rugmi -f foo.png -f bar.png -f baz.png
             or
-        $ imgur -- foo.png bar.png baz.png
+        $ rugmi -- foo.png bar.png baz.png
 
         Upload all JPEG files in a directory and print the result links to stdout.
-        $ find dir/ -type f -name '*.jpg' -print0 | imgur -0
+        $ find dir/ -type f -name '*.jpg' -print0 | rugmi -0
 
         Upload foo.png and print an HTML type of link to be displayed as a medium thumbnail.
-        $ imgur -f foo.png -t HTML -s MT
+        rugmi -f foo.png -t HTML -s MT
+		
 
+Written by Rany Albeg Wein - rany.albeg@gmail.com
+21/5/2016
 
-###How To obtain tokens, *Client ID* and *Client Secret*:
-
-* Create an Imgur account.
-* [Register an application](https://api.imgur.com/oauth2/addclient).
-* You should now have *Client ID* and *Client Secret*.
-* Open your browser with the following URL:
-
-    `https://api.imgur.com/oauth2/authorize?client_id=CLIENT_ID&response_type=pin`
-
-     replacing **CLIENT_ID** with yours.
-
-* You should now have another string called *PIN*.
-* Execute the following:
-
-    ```bash
-    curl -X POST -F "client_id=CLIENT_ID" \
-                  -F "client_secret=CLIENT_SECRET" \
-                  -F "pin=PIN" \
-                  -F "grant_type=pin" https://api.imgur.com/oauth2/token
-    ```
-
-
-     replacing **CLIENT_ID**, **CLIENT_SECRET** and **PIN** with the relevant strings.
-* You should now have *Access Token* and *Refresh Token*. 
-
+Edit 11/1/2019 - Auto Oauth2 setup.
 ### Author
 Rany Albeg Wein - rany.albeg@gmail.com
 
 
 ### License
 
-Copyright (C) 2016 Rany Albeg Wein - rany.albeg@gmail.com
+Copyright (C) 2019 Rany Albeg Wein - rany.albeg@gmail.com
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License

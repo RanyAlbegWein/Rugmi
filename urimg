@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2016 Rany Albeg Wein - rany.albeg@gmail.com
+# Copyright (C) 2019 Rany Albeg Wein - rany.albeg@gmail.com
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -17,15 +17,27 @@
 #
 
 shopt -s extglob
-# Contains access_token, refresh_token, client_id and client_secret.
-codes_file="$HOME/.imgur_codes"
-# Codes map, read from codes_file.
+# Tokens map, access_token and refresh_token are read from tokens_file.
 declare -A codes_map
+codes_map[client_id]=46f1d4960880706
+codes_map[client_secret]=b22d56a65e46ccb9a554683d6f325514a150ebe7
+# Base imgur api URL
+base_api_url=https://api.imgur.com
+# Base OAuth2 url.
+base_oauth2_api_url="$base_api_url/oauth2"
+# PIN Request URL template.
+pin_request_url_template="$base_oauth2_api_url/authorize?client_id=%s&response_type=pin"
+# Token request URL.
+token_request_url="$base_oauth2_api_url/token"
+# Upload URL.
+url_upload="$base_api_url/3/upload"
+# Contains access_token and refresh_token.
+tokens_file="$HOME/.rugmi_tokens"
 # Files to upload.
 files=()
 # Number of images already uploaded.
 uploaded=0
-# Read files from stdin or not.
+# Read files from stdin. 1=read,0=don't.
 read_stdin=0
 # Options string.
 optstring=ht:s:f:0
@@ -47,23 +59,24 @@ usage() {
     local reset=$(tput sgr0)
 cat<<-EOF
 ${bold}NAME${reset}
-        imgur - Upload images to imgur.com and print their links.
+        rugmi - Upload images to imgur.com and print their links.
 
 ${bold}SYNOPSIS${reset}
-        imgur [-ts0h] -f FILE
+        rugmi [-ts0h] -f FILE
 
 ${bold}DESCRIPTION${reset}
         Upload images to imgur.com and print their links.
 		
-        On first execution, imgur will ask you to provide the following:
+        On first execution, rugmi will ask you to authorize by providing a PIN code.
+        If available, xdg-open will be used to open up a browser to log you in imgur.com and get the PIN code.
+        Otherwise, you'll be requested to manually copy-paste an authorization link into your browser.
 
-        - Access token
-        - Refresh token
-        - Client id
-        - Client secret
+        After providing the PIN code, an access token and refresh token will be requested from rugmi.com
+        and stored in ~/.rugmi_tokens with a 077 umask.
 
-        It will then store this info in ~/.imgur_codes with a 077 umask.
-        After setup is complete, imgur will automatically use your refresh token to ask imgur.com for a new access token once it expires.
+        *This file should not be edited manually.*
+
+        After setup is complete, rugmi will automatically ask imgur.com for a new access token once it expires.
 
 ${bold}OPTIONS${reset}
         -f,--file FILE              Select a FILE to upload.
@@ -96,19 +109,21 @@ ${bold}OPTIONS${reset}
             
 ${bold}EXAMPLES${reset}
         Upload foo.png, bar.png, baz.png and print the result links to stdout.
-        ${bold}$ imgur -f foo.png -f bar.png -f baz.png${reset}
+        ${bold}$ rugmi -f foo.png -f bar.png -f baz.png${reset}
             or
-        ${bold}$ imgur -- foo.png bar.png baz.png${reset}
+        ${bold}$ rugmi -- foo.png bar.png baz.png${reset}
 
         Upload all JPEG files in a directory and print the result links to stdout.
-        ${bold}$ find dir/ -type f -name '*.jpg' -print0 | imgur -0${reset}
+        ${bold}$ find dir/ -type f -name '*.jpg' -print0 | rugmi -0${reset}
 
         Upload foo.png and print an HTML type of link to be displayed as a medium thumbnail.
-        ${bold}imgur -f foo.png -t HTML -s MT${reset}
+        ${bold}rugmi -f foo.png -t HTML -s MT${reset}
 		
 
 Written by Rany Albeg Wein - rany.albeg@gmail.com
 21/5/2016
+
+Edit 11/1/2019 - Auto Oauth2 setup.
 EOF
 }
 
@@ -120,25 +135,53 @@ die() {
         r=$1
         shift
     fi
+
     printf '%s\n' "$@" >&2
+
     exit $r
 }
 
-# Initial setup to read and write access_token, refresh_token, client_id and client_secret.
-setup() {
-    printf '%s\n' "Please provide the following details:"
-    read -rp "Access token: " access_token
-    read -rp "Refresh token: " refresh_token
-    read -rp "Client id: " client_id
-    read -rp "Client secret: " client_secret
+# OAuth2 and initial setup.
+setup(){
+    printf -v pin_request_url "$pin_request_url_template" "${codes_map[client_id]}"
 
-    codes_map[access_token]="$access_token"
-    codes_map[refresh_token]="$refresh_token"
-    codes_map[client_id]="$client_id"
-    codes_map[client_secret]="$client_secret"
+    printf '%s\n' "Starting authorization."
 
-    write_codes_file
-}
+    if type -P xdg-open >/dev/null 2>&1; then
+        xdg-open "$pin_request_url" > /dev/null 2>&1 \
+        && \
+        read -rp "Insert PIN code here: " pin
+    else
+        printf '%s\n' "To complete setup please:"
+        printf 'Copy-paste the following authorization link to your browser: %s\n' "$pin_request_url"
+
+        read -rp "Insert PIN code here: " pin
+    fi
+
+
+    [[ $pin ]] || die 7 "Aborting setup. Empty pin."
+
+    if res=$(curl --silent -X POST -F "client_id="${codes_map[client_id]} \
+              -F "client_secret=${codes_map[client_secret]}" \
+              -F "pin=$pin" \
+              -F "grant_type=pin" "$token_request_url"); then
+
+        parse_tokens_to_codes_map <<< "$res"
+
+        if [[ ! ${codes_map[access_token]} || ! ${codes_map[refresh_token]} ]]; then
+            die 8 "Unable to fetch tokens. Probably an invalid PIN was entered."
+        fi
+
+        write_tokens_file
+
+        printf '%s %s\n' "$tokens_file" "created."
+        printf '%s\n' "You're now authorized!"
+
+        return 0
+    fi
+
+    return 1
+} >&2 
 
 print_link() {
     local link=${1%.*}
@@ -180,7 +223,8 @@ is_valid_display_size() {
 upload() {
 
 	for f; do
-        if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" -F "image=@$f" https://api.imgur.com/3/upload | grep -Eo 'https?:[^"]+'); then
+        if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" \
+                               -F "image=@$f" "$url_upload" | grep -Eo 'https?:[^"]+'); then
             print_link "${res//\\/}"
             ((++uploaded))
         else
@@ -190,19 +234,17 @@ upload() {
 }
 
 # Request and read new tokens from imgur.com.
-request_and_read_new_tokens() {
+request_tokens_refresh() {
 
     if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" \
             -F "refresh_token=${codes_map[refresh_token]}" \
             -F "client_id=${codes_map[client_id]}" \
             -F "client_secret=${codes_map[client_secret]}" \
-            -F "grant_type=refresh_token" https://api.imgur.com/oauth2/token); then 
+            -F "grant_type=refresh_token" "$token_request_url"); then 
 
-        while IFS=\" read -rd \, _ k _ v; do
-            if [[ "$k" = @(access_token|refresh_token) ]]; then
-                codes_map["$k"]="$v"
-            fi
-        done <<< "$res"
+        parse_tokens_to_codes_map <<< "$res"
+        
+        write_tokens_file
 
         return 0
     fi
@@ -210,26 +252,34 @@ request_and_read_new_tokens() {
     return 1
 }
 
-# Read codes file to codes_map.
-read_codes_file() {
-    while IFS=: read -r k v; do
-        codes_map["$k"]="$v"
-    done < "$codes_file"
+# Parse imgur response and store:
+# access_token.
+# refresh_token.
+parse_tokens_to_codes_map(){
+
+    while IFS=\" read -rd \, _ k _ v; do
+        if [[ "$k" = @(access_token|refresh_token) ]]; then
+            codes_map["$k"]="$v"
+        fi
+    done
 }
 
-# Write codes_map to codes_file
-write_codes_file() {
+# Read tokens file to codes_map.
+read_tokens_file() {
+    while IFS=: read -r k v; do
+        codes_map["$k"]="$v"
+    done < "$tokens_file"
+}
+
+# Write codes_map to tokens_file
+write_tokens_file() {
 
     umask 077
     printf '%s:%s\n' access_token "${codes_map[access_token]}" \
-                     refresh_token "${codes_map[refresh_token]}" \
-                     client_id "${codes_map[client_id]}" \
-                     client_secret "${codes_map[client_secret]}" > "$codes_file"
-
+                     refresh_token "${codes_map[refresh_token]}" > "$tokens_file"
 } 
 
-
-## PROGRAM STARTS HERE ##
+## EXECUTION STARTS HERE ##
 
 # Parse cmd line.
 # The following loop was written by e36freak.
@@ -318,20 +368,17 @@ fi
 
 if (( ${#files[@]} )); then
 
-    # Codes file existance validation.
-    [[ -f "$codes_file" ]] || setup
+    # Tokens file existance validation.
+    [[ -f "$tokens_file" ]] || setup
 
-    read_codes_file
+    read_tokens_file
 
     # imgur.com is reachable.
     if ping_imgur; then
         # Upload files to imgur.com
         if ! upload "${files[@]}"; then
 
-            request_and_read_new_tokens || die 3 "Request for new tokens failed."
-
-            # Store new tokens for later usage.
-            write_codes_file
+            request_tokens_refresh || die 3 "Request for new tokens failed."
 
             # Try again with remaining files.
             upload "${files[@]:uploaded}" || die 4 "Unable to upload images to imgur.com"
