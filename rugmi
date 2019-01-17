@@ -19,33 +19,34 @@
 shopt -s extglob
 # Tokens map, access_token and refresh_token are read from tokens_file.
 declare -A codes_map
-
-########################
-## CHANGE IS REQUIRED ##
-########################
-codes_map[client_id]=CHANGE_TO_YOUR_CLIENT_ID
-codes_map[client_secret]=CHANGE_TO_YOUR_CLIENT_SECRET
-
 # Base imgur api URL
 base_api_url=https://api.imgur.com
 # Base OAuth2 url.
 base_oauth2_api_url="$base_api_url/oauth2"
+# Register application url.
+register_app_url="$base_oauth2_api_url/addclient"
 # PIN Request URL template.
 pin_request_url_template="$base_oauth2_api_url/authorize?client_id=%s&response_type=pin"
 # Token request URL.
 token_request_url="$base_oauth2_api_url/token"
 # Upload URL.
 url_upload="$base_api_url/3/upload"
+# Delete request URL template.
+declare -x url_delete_request_template="$base_api_url/3/image/%s"
 # Contains access_token and refresh_token.
 tokens_file="$HOME/.rugmi_tokens"
 # Files to upload.
 files=()
 # Number of images already uploaded.
 uploaded=0
+# Spawn deletion.
+spawn_del=0
+# Number of seconds to wait before deletion.
+declare -x spawn_del_sec=0
 # Read files from stdin. 1=read,0=don't.
 read_stdin=0
 # Options string.
-optstring=ht:s:f:0
+optstring=d:ht:s:f:0
 # Options array.
 options=()
 # Link type, should be one of:
@@ -67,25 +68,24 @@ ${bold}NAME${reset}
         rugmi - Upload images to imgur.com and print their links.
 
 ${bold}SYNOPSIS${reset}
-        rugmi [-ts0h] -f FILE
+        rugmi [-dts0h] -f FILE
 
 ${bold}DESCRIPTION${reset}
         Upload images to imgur.com and print their links.
 		
-        On first execution, rugmi will ask you to authorize by providing a PIN code.
-        If available, xdg-open will be used to open up a browser to log you in imgur.com and get the PIN code.
+        On first execution, rugmi will ask you to authorize by providing Client ID, Client Secret and a PIN code.
+        Once Client ID and Client Secret are provided, if available, xdg-open will be used to open up a browser to log you in imgur.com and get the PIN code.
         Otherwise, you'll be requested to manually copy-paste an authorization link into your browser.
 
-        After providing the PIN code, an access token and refresh token will be requested from rugmi.com
-        and stored in ~/.rugmi_tokens with a 077 umask.
-
-        *This file should not be edited manually.*
+        After providing the PIN code, an access token and refresh token will be requested from imgur.com
+        and will be stored in ~/.rugmi_tokens (077 umask) along with Client ID and Client Secret.
 
         After setup is complete, rugmi will automatically ask imgur.com for a new access token once it expires.
 
 ${bold}OPTIONS${reset}
         -f,--file FILE              Select a FILE to upload.
         -0,--null                   Read null terminated file names from stdin.
+        -d,--delete SECONDS         Delete images SECONDS seconds after they've been uploaded.
         -t,--link-type TYPE         Choose what type of link to print after upload.
         -s,--display-size SIZE      Select the display size of the uploaded image.
 
@@ -118,17 +118,22 @@ ${bold}EXAMPLES${reset}
             or
         ${bold}$ rugmi -- foo.png bar.png baz.png${reset}
 
+        Upload foo.png, print the result link to stdout
+        and delete the file from imgur.com servers after 15 seconds.
+        ${bold}$ rugmi -d 15 -f foo.png${reset}
+
         Upload all JPEG files in a directory and print the result links to stdout.
         ${bold}$ find dir/ -type f -name '*.jpg' -print0 | rugmi -0${reset}
 
         Upload foo.png and print an HTML type of link to be displayed as a medium thumbnail.
-        ${bold}rugmi -f foo.png -t HTML -s MT${reset}
+        ${bold}$ rugmi -f foo.png -t HTML -s MT${reset}
 		
 
 Written by Rany Albeg Wein - rany.albeg@gmail.com
 21/5/2016
 
 Edit 11/1/2019 - Auto Oauth2 setup.
+Edit 17/1/2019 - Auto delete.
 EOF
 }
 
@@ -146,23 +151,49 @@ die() {
     exit $r
 }
 
+# Opens a given url in a browser, via xdg-open.
+# Ignore all output by 'xdg-open' and 'type'.
+open_url_in_browser(){
+    local url=$1
+
+    if type -P xdg-open; then
+        xdg-open "$url"
+        return 0;
+    fi
+    return 1;
+} >/dev/null 2>&1
+
 # OAuth2 and initial setup.
+# All output goes to stderr.
 setup(){
-    printf -v pin_request_url "$pin_request_url_template" "${codes_map[client_id]}"
+    local pin
 
     printf '%s\n' "Starting authorization."
 
-    if type -P xdg-open >/dev/null 2>&1; then
-        xdg-open "$pin_request_url" > /dev/null 2>&1 \
-        && \
-        read -rp "Insert PIN code here: " pin
-    else
-        printf '%s\n' "To complete setup please:"
-        printf 'Copy-paste the following authorization link to your browser: %s\n' "$pin_request_url"
-
-        read -rp "Insert PIN code here: " pin
+    if open_url_in_browser "$register_app_url"; then
+        printf 'Browser is opened at %s\n' "$register_app_url"
+    else    
+        printf 'Register an application at %s\n' "$register_app_url"
     fi
 
+    printf 'Get your Client ID and Client Secret and provide them here.\n' 
+
+    read -rp "Client ID: " codes_map[client_id]
+    read -rp "Client Secret: " codes_map[client_secret]
+
+    [[ ${codes_map[client_id]} ]] || die "Aborting Setup. Empty Client ID."
+    [[ ${codes_map[client_secret]} ]] || die "Aborting Setup. Empty Client Secret."
+
+    printf -v pin_request_url "$pin_request_url_template" "${codes_map[client_id]}"
+
+    printf 'To complete setup please:\n'
+
+    if ! open_url_in_browser "$pin_request_url"; then
+
+        printf 'Copy-paste the following authorization link to your browser: %s\n' "$pin_request_url"
+    fi
+
+    read -rp "Insert PIN code here: " pin
 
     [[ $pin ]] || die 7 "Aborting setup. Empty pin."
 
@@ -188,6 +219,7 @@ setup(){
     return 1
 } >&2 
 
+# Print a link based on selected type.
 print_link() {
     local link=${1%.*}
     local ext=${1##*.}
@@ -226,22 +258,64 @@ is_valid_display_size() {
 # Upload images to imgur and print their links.
 # Args: Images to upload.
 upload() {
+    #grep -Eo 'https?:[^"]+')
+    local link
+    local dhash
+    local exit_code=0
 
 	for f; do
         if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" \
-                               -F "image=@$f" "$url_upload" | grep -Eo 'https?:[^"]+'); then
-            print_link "${res//\\/}"
+            -F "image=@$f" "$url_upload"); then
+            link=$(printf '%s' "$res" | jq --raw-output '.data.link')
+            dhash=$(printf '%s' "$res" | jq --raw-output '.data.deletehash')
+
+            print_link "$link"
+            delete_hashes+=("$dhash")
+
             ((++uploaded))
         else
-            return 1
+            exit_code=1
+            break
         fi
     done
+
+    if (( spawn_del && ${#delete_hashes[@]})); then
+        printf 'All uploads will be automatically deleted after %d seconds.\n' "$spawn_del_sec" >&2
+
+        bash -c 'sleep $1 && delete_uploaded $2 "${@:2}"' _ "$spawn_del_sec" "${codes_map[client_id]}" "${delete_hashes[@]}" \
+            >/dev/null 2>&1 & disown
+    fi
+
+    return "$exit_code"
+}
+
+# Request imgur.com to delete several images.
+# Args: All hashes of uploaded images.
+delete_uploaded(){
+    local client_id=$1
+    shift
+    local hashes=("$@")
+    for h in "${hashes[@]}"; do
+        request_deletion "$client_id" "$h"
+    done
+}
+
+# Request imgur.com to delete a single image.
+# Args: Access token and delete hash.
+request_deletion(){
+    local client_id=$1
+    local dhash=$2
+    local delete_url
+
+    printf -v delete_url "$url_delete_request_template" "$dhash"
+
+    curl -X DELETE -H "Authorization: Client-ID $client_id" "$delete_url"
 }
 
 # Request and read new tokens from imgur.com.
 request_tokens_refresh() {
 
-    if res=$(curl --silent -X POST -H "Authorization: Bearer ${codes_map[access_token]}" \
+    if res=$(curl -s -X POST -H "Authorization: Bearer ${codes_map[access_token]}" \
             -F "refresh_token=${codes_map[refresh_token]}" \
             -F "client_id=${codes_map[client_id]}" \
             -F "client_secret=${codes_map[client_secret]}" \
@@ -281,11 +355,15 @@ write_tokens_file() {
 
     umask 077
     printf '%s:%s\n' access_token "${codes_map[access_token]}" \
-                     refresh_token "${codes_map[refresh_token]}" > "$tokens_file"
+                     refresh_token "${codes_map[refresh_token]}" \
+                     client_id "${codes_map[client_id]}" \
+                     client_secret "${codes_map[client_secret]}" > "$tokens_file"
 } 
 
 ## EXECUTION STARTS HERE ##
 
+export -f delete_uploaded
+export -f request_deletion
 # Parse cmd line.
 # The following loop was written by e36freak.
 # Check out his great projects at: https://github.com/e36freak
@@ -332,6 +410,12 @@ while [[ $1 = -?* ]]; do
   case $1 in
     -h|--help) usage >&2; exit 0;;
     -0|--null) read_stdin=1;;
+    -d|--delete)
+        spawn_del=1
+        [[ $2 != *[!0-9]* ]] || die 555 "Invalid time: $2"
+        spawn_del_sec=$2
+        shift
+        ;;
     -t|--link-type) 
         is_valid_link_type "$2" || die 1 "Invalid link type: $2"
         link_type="$2"

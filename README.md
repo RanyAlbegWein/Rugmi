@@ -1,8 +1,6 @@
-**sha1sum**: 386bdefea06df9c09aad35a68273494c2a84fd51
+**sha1sum**: 33df3ee819e6d23e176c2d66d6edbb129fd46cc3
 
 <a href='https://ko-fi.com/E1E0B4X4' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://az743702.vo.msecnd.net/cdn/kofi4.png?v=0' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
-
-BEFORE EXECUTION, EDIT Rugmi TO HOLD YOUR CLIENT_ID and CLIENT_SECRET
 
 **NAME**
 
@@ -13,24 +11,23 @@ BEFORE EXECUTION, EDIT Rugmi TO HOLD YOUR CLIENT_ID and CLIENT_SECRET
         rugmi [-ts0h] -f FILE
 
 **DESCRIPTION**
-
+		
         Upload images to imgur.com and print their links.
 		
-        On first execution, rugmi will ask you to authorize by providing a PIN code.
-        If available, xdg-open will be used to open up a browser to log you in imgur.com and get the PIN code.
+        On first execution, rugmi will ask you to authorize by providing Client ID, Client Secret and a PIN code.
+        Once Client ID and Client Secret are provided, if available, xdg-open will be used to open up a browser to log you in imgur.com and get the PIN code.
         Otherwise, you'll be requested to manually copy-paste an authorization link into your browser.
 
         After providing the PIN code, an access token and refresh token will be requested from imgur.com
-        and stored in ~/.rugmi_tokens with a 077 umask.
+        and will be stored in ~/.rugmi_tokens (077 umask) along with Client ID and Client Secret.
 
-        *This file should not be edited manually.*
-
-        After setup is complete, rugmi will automatically ask imgur.com for a new access token once expired.
+        After setup is complete, rugmi will automatically ask imgur.com for a new access token once it expires.
 
 **OPTIONS**
 
         -f,--file FILE              Select a FILE to upload.
         -0,--null                   Read null terminated file names from stdin.
+        -d,--delete SECONDS         Delete images SECONDS seconds after they've been uploaded.
         -t,--link-type TYPE         Choose what type of link to print after upload.
         -s,--display-size SIZE      Select the display size of the uploaded image.
 
@@ -63,6 +60,10 @@ BEFORE EXECUTION, EDIT Rugmi TO HOLD YOUR CLIENT_ID and CLIENT_SECRET
         $ rugmi -f foo.png -f bar.png -f baz.png
             or
         $ rugmi -- foo.png bar.png baz.png
+        
+        Upload foo.png, print the result link to stdout
+        and delete the file from imgur.com servers after 15 seconds.
+        $ rugmi -d 15 -f foo.png
 
         Upload all JPEG files in a directory and print the result links to stdout.
         $ find dir/ -type f -name '*.jpg' -print0 | rugmi -0
@@ -75,6 +76,7 @@ BEFORE EXECUTION, EDIT Rugmi TO HOLD YOUR CLIENT_ID and CLIENT_SECRET
     21/5/2016
     
     Edit 11/1/2019 - Auto Oauth2 setup.
+    Edit 17/1/2019 - Auto delete.
 ### Author
     Rany Albeg Wein - rany.albeg@gmail.com
 
