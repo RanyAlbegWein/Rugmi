@@ -42,7 +42,7 @@ uploaded=0
 # Spawn deletion.
 spawn_del=0
 # Number of seconds to wait before deletion.
-declare -x spawn_del_sec=0
+spawn_del_sec=0
 # Read files from stdin. 1=read,0=don't.
 read_stdin=0
 # Options string.
@@ -80,7 +80,9 @@ ${bold}DESCRIPTION${reset}
         After providing the PIN code, an access token and refresh token will be requested from imgur.com
         and will be stored in ~/.rugmi_tokens (077 umask) along with Client ID and Client Secret.
 
-        After setup is complete, rugmi will automatically ask imgur.com for a new access token once it expires.
+        After setup is complete, rugmi will automatically upload FILES to imgur.com.
+
+        Rugmi will ask imgur.com for new access token once expired.
 
 ${bold}OPTIONS${reset}
         -f,--file FILE              Select a FILE to upload.
@@ -412,7 +414,7 @@ while [[ $1 = -?* ]]; do
     -0|--null) read_stdin=1;;
     -d|--delete)
         spawn_del=1
-        [[ $2 != *[!0-9]* ]] || die 555 "Invalid time: $2"
+        [[ $2 != *[!0-9]* ]] || die 9 "Invalid time: $2"
         spawn_del_sec=$2
         shift
         ;;

@@ -1,4 +1,4 @@
-**sha1sum**: 33df3ee819e6d23e176c2d66d6edbb129fd46cc3
+**sha1sum**: 6a0e9ebbcf1621013d5e18de134245143d4971ed
 
 <a href='https://ko-fi.com/E1E0B4X4' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://az743702.vo.msecnd.net/cdn/kofi4.png?v=0' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
@@ -8,7 +8,7 @@
 
 **SYNOPSIS**
 
-        rugmi [-ts0h] -f FILE
+        rugmi [-dts0h] -f FILE
 
 **DESCRIPTION**
 		
@@ -21,7 +21,9 @@
         After providing the PIN code, an access token and refresh token will be requested from imgur.com
         and will be stored in ~/.rugmi_tokens (077 umask) along with Client ID and Client Secret.
 
-        After setup is complete, rugmi will automatically ask imgur.com for a new access token once it expires.
+        After setup is complete, rugmi will automatically upload FILES to imgur.com.
+
+        Rugmi will ask imgur.com for new access token once expired.
 
 **OPTIONS**
 
@@ -71,12 +73,6 @@
         Upload foo.png and print an HTML type of link to be displayed as a medium thumbnail.
         rugmi -f foo.png -t HTML -s MT
 		
-
-    Written by Rany Albeg Wein - rany.albeg@gmail.com
-    21/5/2016
-    
-    Edit 11/1/2019 - Auto Oauth2 setup.
-    Edit 17/1/2019 - Auto delete.
 ### Author
     Rany Albeg Wein - rany.albeg@gmail.com
 
