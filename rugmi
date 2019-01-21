@@ -136,7 +136,16 @@ Written by Rany Albeg Wein - rany.albeg@gmail.com
 
 Edit 11/1/2019 - Auto Oauth2 setup.
 Edit 17/1/2019 - Auto delete.
+Edit 21/1/12019 - Dependencies check.
 EOF
+}
+
+# Check for dependencies, abort if a dependency is missing.
+# Args: dependencies.
+deps_check(){
+    for prog; do
+        type -P "$prog" >/dev/null 2>&1 || die 10 "Missing dependency: $prog"
+    done
 }
 
 # Die.
@@ -364,8 +373,11 @@ write_tokens_file() {
 
 ## EXECUTION STARTS HERE ##
 
+deps_check curl jq
+
 export -f delete_uploaded
 export -f request_deletion
+
 # Parse cmd line.
 # The following loop was written by e36freak.
 # Check out his great projects at: https://github.com/e36freak
